@@ -162,6 +162,7 @@ def save_availability(rows, sha=None):
 
         writer.writerow({
             "email": row["email"],
+            "number": row["number"],
             "work_date": row["work_date"],
             "shift": row["shift"]
         })
@@ -393,8 +394,13 @@ st.subheader(
 )
 
 email = st.text_input(
-    "Email address",
+    "Email",
     placeholder="maria@company.com"
+).strip().lower()
+
+number = st.text_input(
+    "Τελ. Αριθμός",
+    placeholder="1234"
 ).strip().lower()
 
 
