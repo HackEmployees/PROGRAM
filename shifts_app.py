@@ -756,7 +756,7 @@ email = st.text_input(
 
 
 number = st.text_input(
-    "Τελικός αριθμός",
+    "Τελ. αριθμός",
     placeholder="1234"
 ).strip()
 
@@ -804,7 +804,7 @@ if st.button(
     if not number:
 
         st.error(
-            "Παρακαλώ συμπληρώστε τον τελικό αριθμό."
+            "Παρακαλώ συμπληρώστε τον αριθμό."
         )
 
         st.stop()
