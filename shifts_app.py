@@ -147,6 +147,7 @@ def save_availability(rows, sha=None):
 
     fieldnames = [
         "email",
+        "number",
         "work_date",
         "shift"
     ]
