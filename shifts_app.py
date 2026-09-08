@@ -417,12 +417,33 @@ if email:
         "Select month"
     )
 
-    today = date.today()
 
-  
+    
+    # ============================================================
+    # MONTH SELECTION - NEXT 3 MONTHS
+    # ============================================================
+    
+    today = date.today()
+    
+    GREEK_MONTHS = [
+        "Ιανουάριος",
+        "Φεβρουάριος",
+        "Μάρτιος",
+        "Απρίλιος",
+        "Μάιος",
+        "Ιούνιος",
+        "Ιούλιος",
+        "Αύγουστος",
+        "Σεπτέμβριος",
+        "Οκτώβριος",
+        "Νοέμβριος",
+        "Δεκέμβριος",
+    ]
+    
     months = []
     
-    for i in range(12):
+    for i in range(3):
+    
         total_months = (
             today.year * 12
             + today.month
@@ -433,28 +454,38 @@ if email:
         year = total_months // 12
         month = total_months % 12 + 1
     
-        months.append((year, month))
+        months.append(
+            (year, month)
+        )
     
     
     month_labels = [
-        f"{calendar.month_name[month]} {year}"
+        f"{GREEK_MONTHS[month - 1]} {year}"
         for year, month in months
     ]
     
+    
     selected_label = st.selectbox(
-        "Month",
+        "Επιλέξτε μήνα",
         month_labels
     )
+    
     
     selected_index = month_labels.index(
         selected_label
     )
     
-    year, month = months[selected_index]
-
-    month_name = calendar.month_name[
-        month
+    
+    year, month = months[
+        selected_index
     ]
+    
+    
+        
+    
+    month_name = calendar.month_name[
+            month
+        ]
 
 
     # ========================================================
