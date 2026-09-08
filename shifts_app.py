@@ -419,19 +419,38 @@ if email:
 
     today = date.today()
 
-    selected_month = st.date_input(
+  
+    months = []
+    
+    for i in range(12):
+        total_months = (
+            today.year * 12
+            + today.month
+            - 1
+            + i
+        )
+    
+        year = total_months // 12
+        month = total_months % 12 + 1
+    
+        months.append((year, month))
+    
+    
+    month_labels = [
+        f"{calendar.month_name[month]} {year}"
+        for year, month in months
+    ]
+    
+    selected_label = st.selectbox(
         "Month",
-        value=date(
-            today.year,
-            today.month,
-            1
-        ),
-        format="DD/MM/YYYY"
+        month_labels
     )
-
-    year = selected_month.year
-
-    month = selected_month.month
+    
+    selected_index = month_labels.index(
+        selected_label
+    )
+    
+    year, month = months[selected_index]
 
     month_name = calendar.month_name[
         month
