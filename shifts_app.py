@@ -9,7 +9,7 @@ from datetime import date, timedelta
 
 
 # ============================================================
-# CONFIGURATION
+# SETTINGS
 # ============================================================
 
 DATA_FILE = "availability.csv"
@@ -104,11 +104,9 @@ def read_availability():
     )
 
     if response.status_code == 404:
-
         return [], None
 
     if not response.ok:
-
         raise Exception(
             f"GitHub error "
             f"{response.status_code}: "
@@ -126,9 +124,7 @@ def read_availability():
 
     decoded = base64.b64decode(
         encoded
-    ).decode(
-        "utf-8"
-    )
+    ).decode("utf-8")
 
     reader = csv.DictReader(
         io.StringIO(decoded)
@@ -180,7 +176,6 @@ def save_availability(
     }
 
     if sha:
-
         payload["sha"] = sha
 
     response = requests.put(
@@ -279,9 +274,7 @@ def get_holidays(year):
             )
         ] = name
 
-    easter = orthodox_easter(
-        year
-    )
+    easter = orthodox_easter(year)
 
     holidays[
         easter - timedelta(days=2)
@@ -299,7 +292,7 @@ def get_holidays(year):
 
 
 # ============================================================
-# SHIFTS FOR DATE
+# SHIFTS
 # ============================================================
 
 def get_shifts(
@@ -308,18 +301,16 @@ def get_shifts(
 ):
 
     if work_date in holidays:
-
         return HOLIDAY_SHIFTS
 
     if work_date.weekday() >= 5:
-
         return WEEKEND_SHIFTS
 
     return WEEKDAY_SHIFTS
 
 
 # ============================================================
-# EMPLOYEE EXISTING DATA
+# LOAD EXISTING EMPLOYEE DATA
 # ============================================================
 
 def get_existing(
@@ -331,15 +322,21 @@ def get_existing(
 
     existing = set()
 
+    email = email.strip().lower()
+
     for row in rows:
 
-        if row["email"].strip().lower() != email:
-
+        if (
+            row["email"]
+            .strip()
+            .lower()
+            != email
+        ):
             continue
 
         try:
 
-            d = date.fromisoformat(
+            work_date = date.fromisoformat(
                 row["work_date"]
             )
 
@@ -348,6 +345,403 @@ def get_existing(
             continue
 
         if (
-            d.year == year
-            and d.month == month
+            work_date.year == year
+            and work_date.month == month
         ):
+
+            existing.add(
+                (
+                    row["work_date"],
+                    row["shift"]
+                )
+            )
+
+    return existing
+
+
+# ============================================================
+# TITLE
+# ============================================================
+
+st.title(
+    "📅 Shift Availability"
+)
+
+st.write(
+    "Choose the month and select all shifts "
+    "when you are available to work."
+)
+
+
+# ============================================================
+# MONTH SELECTION
+# ============================================================
+
+st.subheader(
+    "1. Choose month"
+)
+
+
+today = date.today()
+
+
+# Create the next 12 months
+
+months = []
+
+for i in range(12):
+
+    total_months = (
+        today.year * 12
+        + today.month
+        - 1
+        + i
+    )
+
+    year = total_months // 12
+
+    month = total_months % 12 + 1
+
+    months.append(
+        (
+            year,
+            month
+        )
+    )
+
+
+month_labels = [
+    f"{calendar.month_name[m]} {y}"
+    for y, m in months
+]
+
+
+selected_label = st.selectbox(
+    "Month",
+    month_labels
+)
+
+
+selected_index = month_labels.index(
+    selected_label
+)
+
+
+year, month = months[
+    selected_index
+]
+
+
+# ============================================================
+# LOAD DATA
+# ============================================================
+
+try:
+
+    all_rows, csv_sha = read_availability()
+
+except Exception as error:
+
+    st.error(
+        f"Could not load availability: "
+        f"{error}"
+    )
+
+    st.stop()
+
+
+# ============================================================
+# CALENDAR
+# ============================================================
+
+st.subheader(
+    f"2. Availability — {selected_label}"
+)
+
+st.caption(
+    "🟥 Public holiday   "
+    "🟦 Weekend"
+)
+
+
+holidays = get_holidays(
+    year
+)
+
+
+calendar_data = calendar.monthcalendar(
+    year,
+    month
+)
+
+
+weekday_names = [
+    "MON",
+    "TUE",
+    "WED",
+    "THU",
+    "FRI",
+    "SAT",
+    "SUN"
+]
+
+
+# ============================================================
+# DAY HEADERS
+# ============================================================
+
+header = st.columns(7)
+
+for i, day_name in enumerate(
+    weekday_names
+):
+
+    header[i].markdown(
+        f"**{day_name}**"
+    )
+
+
+# ============================================================
+# CALENDAR
+# ============================================================
+
+selected = []
+
+
+for week_number, week in enumerate(
+    calendar_data
+):
+
+    columns = st.columns(7)
+
+
+    for day_index, day_number in enumerate(
+        week
+    ):
+
+        with columns[day_index]:
+
+            # Empty calendar cell
+
+            if day_number == 0:
+
+                st.write("")
+
+                continue
+
+
+            work_date = date(
+                year,
+                month,
+                day_number
+            )
+
+
+            # ------------------------------------------------
+            # DATE
+            # ------------------------------------------------
+
+            if work_date in holidays:
+
+                st.markdown(
+                    f"**🟥 {day_number}**"
+                )
+
+                st.caption(
+                    holidays[work_date]
+                )
+
+            elif work_date.weekday() >= 5:
+
+                st.markdown(
+                    f"**🟦 {day_number}**"
+                )
+
+            else:
+
+                st.markdown(
+                    f"**{day_number}**"
+                )
+
+
+            # ------------------------------------------------
+            # SHIFTS
+            # ------------------------------------------------
+
+            shifts = get_shifts(
+                work_date,
+                holidays
+            )
+
+
+            for shift_index, shift in enumerate(
+                shifts
+            ):
+
+                checkbox_key = (
+                    f"shift_"
+                    f"{year}_"
+                    f"{month}_"
+                    f"{day_number}_"
+                    f"{shift_index}"
+                )
+
+
+                checked = st.checkbox(
+                    shift,
+                    key=checkbox_key
+                )
+
+
+                if checked:
+
+                    selected.append({
+                        "work_date":
+                            work_date.isoformat(),
+                        "shift":
+                            shift
+                    })
+
+
+# ============================================================
+# EMAIL — LAST
+# ============================================================
+
+st.divider()
+
+st.subheader(
+    "3. Submit"
+)
+
+st.write(
+    "Enter your email after selecting "
+    "all your available shifts."
+)
+
+
+email = st.text_input(
+    "Email address",
+    placeholder="name@company.com"
+).strip().lower()
+
+
+# ============================================================
+# SUBMIT EVERYTHING
+# ============================================================
+
+if st.button(
+    "✅ SUBMIT AVAILABILITY",
+    type="primary",
+    use_container_width=True
+):
+
+    # --------------------------------------------------------
+    # Validate email
+    # --------------------------------------------------------
+
+    if not email:
+
+        st.error(
+            "Please enter your email address."
+        )
+
+        st.stop()
+
+
+    if "@" not in email:
+
+        st.error(
+            "Please enter a valid email address."
+        )
+
+        st.stop()
+
+
+    # --------------------------------------------------------
+    # Remove old entries for this employee/month
+    # --------------------------------------------------------
+
+    new_rows = []
+
+
+    for row in all_rows:
+
+        try:
+
+            work_date = date.fromisoformat(
+                row["work_date"]
+            )
+
+        except ValueError:
+
+            continue
+
+
+        same_email = (
+            row["email"]
+            .strip()
+            .lower()
+            == email
+        )
+
+
+        same_month = (
+            work_date.year == year
+            and work_date.month == month
+        )
+
+
+        if (
+            same_email
+            and same_month
+        ):
+
+            continue
+
+
+        new_rows.append(
+            row
+        )
+
+
+    # --------------------------------------------------------
+    # Add selected availability
+    # --------------------------------------------------------
+
+    for item in selected:
+
+        new_rows.append({
+            "email": email,
+            "work_date":
+                item["work_date"],
+            "shift":
+                item["shift"]
+        })
+
+
+    # --------------------------------------------------------
+    # SAVE
+    # --------------------------------------------------------
+
+    try:
+
+        save_availability(
+            new_rows,
+            csv_sha
+        )
+
+        st.success(
+            "✅ Availability submitted successfully!"
+        )
+
+        st.info(
+            f"{len(selected)} shifts submitted "
+            f"for {selected_label}."
+        )
+
+    except Exception as error:
+
+        st.error(
+            f"Could not save availability: "
+            f"{error}"
+        )
