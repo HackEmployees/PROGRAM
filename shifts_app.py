@@ -336,6 +336,7 @@ def shifts_for_date(
 def get_employee_selections(
     rows,
     email,
+    number,
     year,
     month
 ):
@@ -516,6 +517,7 @@ if email:
     existing = get_employee_selections(
         all_rows,
         email,
+        number,
         year,
         month
     )
@@ -679,6 +681,7 @@ if email:
                         selected.append(
                             {
                                 "email": email,
+                                "number": number,
                                 "work_date":
                                     work_date.isoformat(),
                                 "shift": shift
