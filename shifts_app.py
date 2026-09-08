@@ -9,11 +9,12 @@ from datetime import date, timedelta
 
 
 # ============================================================
-# CONFIGURATION
+# ΡΥΘΜΙΣΕΙΣ
 # ============================================================
 
 DATA_FILE = "availability.csv"
 
+# Δευτέρα - Παρασκευή
 WEEKDAY_SHIFTS = [
     "03:30-07:30",
     "07:30-15:00",
@@ -21,12 +22,14 @@ WEEKDAY_SHIFTS = [
     "21:30-03:30",
 ]
 
+# Σάββατο - Κυριακή
 WEEKEND_SHIFTS = [
     "03:30-11:30",
     "11:30-19:30",
     "19:30-03:30",
 ]
 
+# Αργίες
 HOLIDAY_SHIFTS = [
     "03:30-11:30",
     "11:30-19:30",
@@ -35,39 +38,45 @@ HOLIDAY_SHIFTS = [
 
 
 # ============================================================
-# PAGE
+# ΣΕΛΙΔΑ
 # ============================================================
 
 st.set_page_config(
-    page_title="Employee Availability",
+    page_title="Διαθεσιμότητα Εργαζομένων",
     page_icon="📅",
     layout="wide"
 )
 
 
 # ============================================================
-# STREAMLIT SECRETS
+# GITHUB SECRETS
 # ============================================================
 
 try:
+
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+
     GITHUB_OWNER = st.secrets["GITHUB_OWNER"]
+
     GITHUB_REPO = st.secrets["GITHUB_REPO"]
+
     GITHUB_BRANCH = st.secrets.get(
         "GITHUB_BRANCH",
         "data"
     )
 
 except Exception:
+
     st.error(
-        "GitHub settings are missing from "
-        "Streamlit Secrets."
+        "Λείπουν οι ρυθμίσεις GitHub από "
+        "τα Streamlit Secrets."
     )
+
     st.stop()
 
 
 # ============================================================
-# GITHUB
+# GITHUB API
 # ============================================================
 
 GITHUB_URL = (
@@ -88,7 +97,7 @@ def github_headers():
 
 
 # ============================================================
-# READ AVAILABILITY CSV
+# ΔΙΑΒΑΣΜΑ CSV
 # ============================================================
 
 def read_availability():
@@ -102,16 +111,20 @@ def read_availability():
         timeout=20
     )
 
-    # File doesn't exist yet
+    # Το αρχείο δεν υπάρχει ακόμα
     if response.status_code == 404:
+
         return [], None
+
 
     if not response.ok:
 
         raise Exception(
-            f"GitHub error {response.status_code}: "
+            f"Σφάλμα GitHub "
+            f"{response.status_code}: "
             f"{response.text}"
         )
+
 
     data = response.json()
 
@@ -128,6 +141,7 @@ def read_availability():
         "utf-8"
     )
 
+
     reader = csv.DictReader(
         io.StringIO(decoded)
     )
@@ -138,19 +152,25 @@ def read_availability():
 
 
 # ============================================================
-# SAVE AVAILABILITY CSV
+# ΑΠΟΘΗΚΕΥΣΗ CSV
 # ============================================================
 
-def save_availability(rows, sha=None):
+def save_availability(
+    rows,
+    sha=None
+):
 
     output = io.StringIO()
 
+
+    # ΑΚΡΙΒΩΣ αυτά τα 4 columns
     fieldnames = [
         "email",
         "number",
         "work_date",
         "shift"
     ]
+
 
     writer = csv.DictWriter(
         output,
@@ -159,14 +179,25 @@ def save_availability(rows, sha=None):
 
     writer.writeheader()
 
+
     for row in rows:
 
         writer.writerow({
-            "email": row["email"],
-            "number": row["number"],
-            "work_date": row["work_date"],
-            "shift": row["shift"]
+
+            "email":
+                row.get("email", ""),
+
+            "number":
+                row.get("number", ""),
+
+            "work_date":
+                row.get("work_date", ""),
+
+            "shift":
+                row.get("shift", "")
+
         })
+
 
     encoded = base64.b64encode(
         output.getvalue().encode(
@@ -176,14 +207,24 @@ def save_availability(rows, sha=None):
         "utf-8"
     )
 
+
     payload = {
-        "message": "Update employee availability",
-        "content": encoded,
-        "branch": GITHUB_BRANCH
+
+        "message":
+            "Ενημέρωση διαθεσιμότητας",
+
+        "content":
+            encoded,
+
+        "branch":
+            GITHUB_BRANCH
     }
 
+
     if sha:
+
         payload["sha"] = sha
+
 
     response = requests.put(
         GITHUB_URL,
@@ -192,39 +233,59 @@ def save_availability(rows, sha=None):
         timeout=20
     )
 
+
     if response.status_code not in (
         200,
         201
     ):
 
         raise Exception(
-            f"GitHub save error "
+            f"Σφάλμα αποθήκευσης GitHub "
             f"{response.status_code}: "
             f"{response.text}"
         )
 
 
 # ============================================================
-# HOLIDAYS
+# ΚΥΠΡΙΑΚΕΣ ΑΡΓΙΕΣ
 # ============================================================
 
 FIXED_HOLIDAYS = {
 
-    (1, 1): "New Year's Day",
-    (1, 6): "Epiphany",
-    (3, 25): "Greek National Day",
-    (4, 1): "Cyprus National Day",
-    (5, 1): "Labour Day",
-    (8, 15): "Assumption",
-    (10, 1): "Cyprus Independence Day",
-    (10, 28): "Ohi Day",
-    (12, 25): "Christmas Day",
-    (12, 26): "Boxing Day",
+    (1, 1):
+        "Πρωτοχρονιά",
+
+    (1, 6):
+        "Θεοφάνεια",
+
+    (3, 25):
+        "25η Μαρτίου",
+
+    (4, 1):
+        "1η Απριλίου",
+
+    (5, 1):
+        "Εργατική Πρωτομαγιά",
+
+    (8, 15):
+        "Κοίμηση της Θεοτόκου",
+
+    (10, 1):
+        "Ημέρα Ανεξαρτησίας Κύπρου",
+
+    (10, 28):
+        "28η Οκτωβρίου",
+
+    (12, 25):
+        "Χριστούγεννα",
+
+    (12, 26):
+        "Δεύτερη ημέρα Χριστουγέννων",
 }
 
 
 # ============================================================
-# ORTHODOX EASTER
+# ΟΡΘΟΔΟΞΟ ΠΑΣΧΑ
 # ============================================================
 
 def orthodox_easter(year):
@@ -258,21 +319,22 @@ def orthodox_easter(year):
         day
     )
 
-    # Julian → Gregorian
+    # Μετατροπή Ιουλιανού σε Γρηγοριανό
     return julian + timedelta(
         days=13
     )
 
 
 # ============================================================
-# HOLIDAYS FOR YEAR
+# ΑΡΓΙΕΣ ΓΙΑ ΕΝΑ ΕΤΟΣ
 # ============================================================
 
 def get_holidays(year):
 
     holidays = {}
 
-    # Fixed holidays
+
+    # Σταθερές αργίες
 
     for (month, day), name in FIXED_HOLIDAYS.items():
 
@@ -284,56 +346,62 @@ def get_holidays(year):
             )
         ] = name
 
-    # Easter
+
+    # Πάσχα
 
     easter = orthodox_easter(
         year
     )
 
+
     holidays[
         easter - timedelta(days=2)
-    ] = "Good Friday"
+    ] = "Μεγάλη Παρασκευή"
+
 
     holidays[
         easter
-    ] = "Easter Sunday"
+    ] = "Κυριακή του Πάσχα"
+
 
     holidays[
         easter + timedelta(days=1)
-    ] = "Easter Monday"
+    ] = "Δευτέρα του Πάσχα"
+
 
     return holidays
 
 
 # ============================================================
-# SHIFTS FOR A DATE
+# ΒΑΡΔΙΕΣ ΓΙΑ ΚΑΘΕ ΗΜΕΡΑ
 # ============================================================
 
-def shifts_for_date(
+def get_shifts_for_date(
     work_date,
     holidays
 ):
 
-    # Public holiday
-
+    # Αργία
     if work_date in holidays:
+
         return HOLIDAY_SHIFTS
 
-    # Weekend
 
+    # Σαββατοκύριακο
     if work_date.weekday() >= 5:
+
         return WEEKEND_SHIFTS
 
-    # Monday-Friday
 
+    # Δευτέρα - Παρασκευή
     return WEEKDAY_SHIFTS
 
 
 # ============================================================
-# LOAD EMPLOYEE'S EXISTING SELECTIONS
+# ΤΙ ΕΧΕΙ ΗΔΗ ΔΗΛΩΣΕΙ Ο ΕΡΓΑΖΟΜΕΝΟΣ
 # ============================================================
 
-def get_employee_selections(
+def get_existing_selections(
     rows,
     email,
     number,
@@ -343,10 +411,35 @@ def get_employee_selections(
 
     selections = set()
 
+
+    email = email.strip().lower()
+
+    number = number.strip()
+
+
     for row in rows:
 
-        if row["email"].strip().lower() != email:
+        row_email = (
+            row.get("email", "")
+            .strip()
+            .lower()
+        )
+
+        row_number = (
+            row.get("number", "")
+            .strip()
+        )
+
+
+        if row_email != email:
+
             continue
+
+
+        if row_number != number:
+
+            continue
+
 
         try:
 
@@ -354,9 +447,10 @@ def get_employee_selections(
                 row["work_date"]
             )
 
-        except ValueError:
+        except Exception:
 
             continue
+
 
         if (
             work_date.year == year
@@ -370,431 +464,331 @@ def get_employee_selections(
                 )
             )
 
+
     return selections
 
 
 # ============================================================
-# MAIN INTERFACE
+# ΤΙΤΛΟΣ
 # ============================================================
 
 st.title(
-    "📅 Employee Availability"
+    "📅 Δήλωση Διαθεσιμότητας"
 )
 
 st.write(
-    "Select the dates and shifts when "
-    "you are available to work."
+    "Επιλέξτε τον μήνα και τις βάρδιες "
+    "στις οποίες μπορείτε να εργαστείτε."
 )
 
 
 # ============================================================
-# EMAIL
+# 1. ΕΠΙΛΟΓΗ ΜΗΝΑ
 # ============================================================
 
 st.subheader(
-    "Your email"
+    "1. Επιλέξτε μήνα"
 )
+
+
+today = date.today()
+
+
+GREEK_MONTHS = [
+
+    "Ιανουάριος",
+    "Φεβρουάριος",
+    "Μάρτιος",
+    "Απρίλιος",
+    "Μάιος",
+    "Ιούνιος",
+    "Ιούλιος",
+    "Αύγουστος",
+    "Σεπτέμβριος",
+    "Οκτώβριος",
+    "Νοέμβριος",
+    "Δεκέμβριος",
+]
+
+
+# Μόνο οι επόμενοι 3 μήνες
+
+months = []
+
+
+for i in range(3):
+
+    total_months = (
+        today.year * 12
+        + today.month
+        - 1
+        + i
+    )
+
+
+    year = total_months // 12
+
+    month = total_months % 12 + 1
+
+
+    months.append(
+        (
+            year,
+            month
+        )
+    )
+
+
+month_labels = [
+
+    f"{GREEK_MONTHS[month - 1]} {year}"
+
+    for year, month in months
+
+]
+
+
+selected_label = st.selectbox(
+
+    "Μήνας",
+
+    month_labels
+
+)
+
+
+selected_index = month_labels.index(
+    selected_label
+)
+
+
+year, month = months[
+    selected_index
+]
+
+
+# ============================================================
+# 2. ΦΟΡΜΑ ΔΙΑΘΕΣΙΜΟΤΗΤΑΣ
+# ============================================================
+
+st.subheader(
+    f"2. Διαθεσιμότητα — {selected_label}"
+)
+
+
+st.caption(
+    "🟥 Αργία    🟦 Σαββατοκύριακο"
+)
+
+
+holidays = get_holidays(
+    year
+)
+
+
+calendar_weeks = calendar.monthcalendar(
+    year,
+    month
+)
+
+
+GREEK_DAYS = [
+
+    "ΔΕΥ",
+    "ΤΡΙ",
+    "ΤΕΤ",
+    "ΠΕΜ",
+    "ΠΑΡ",
+    "ΣΑΒ",
+    "ΚΥΡ"
+
+]
+
+
+# ============================================================
+# ΗΜΕΡΕΣ ΕΒΔΟΜΑΔΑΣ
+# ============================================================
+
+header = st.columns(7)
+
+
+for i, day_name in enumerate(
+    GREEK_DAYS
+):
+
+    with header[i]:
+
+        st.markdown(
+            f"**{day_name}**"
+        )
+
+
+# ============================================================
+# ΕΠΙΛΟΓΕΣ
+# ============================================================
+
+selected = []
+
+
+for week_number, week in enumerate(
+    calendar_weeks
+):
+
+    columns = st.columns(7)
+
+
+    for day_index, day_number in enumerate(
+        week
+    ):
+
+        with columns[day_index]:
+
+
+            # Κενό κελί
+
+            if day_number == 0:
+
+                st.write("")
+
+                continue
+
+
+            work_date = date(
+                year,
+                month,
+                day_number
+            )
+
+
+            # ------------------------------------------------
+            # ΗΜΕΡΑ
+            # ------------------------------------------------
+
+            if work_date in holidays:
+
+                st.markdown(
+                    f"**🟥 {day_number}**"
+                )
+
+                st.caption(
+                    holidays[work_date]
+                )
+
+
+            elif work_date.weekday() >= 5:
+
+                st.markdown(
+                    f"**🟦 {day_number}**"
+                )
+
+
+            else:
+
+                st.markdown(
+                    f"**{day_number}**"
+                )
+
+
+            # ------------------------------------------------
+            # ΒΑΡΔΙΕΣ
+            # ------------------------------------------------
+
+            shifts = get_shifts_for_date(
+                work_date,
+                holidays
+            )
+
+
+            for shift_index, shift in enumerate(
+                shifts
+            ):
+
+
+                checkbox_key = (
+
+                    f"shift_"
+                    f"{year}_"
+                    f"{month}_"
+                    f"{day_number}_"
+                    f"{shift_index}"
+
+                )
+
+
+                checked = st.checkbox(
+
+                    shift,
+
+                    key=checkbox_key
+
+                )
+
+
+                if checked:
+
+                    selected.append({
+
+                        "work_date":
+                            work_date.isoformat(),
+
+                        "shift":
+                            shift
+
+                    })
+
+
+# ============================================================
+# 3. ΣΤΟΙΧΕΙΑ ΕΡΓΑΖΟΜΕΝΟΥ
+# ============================================================
+
+st.divider()
+
+
+st.subheader(
+    "3. Στοιχεία εργαζομένου"
+)
+
 
 email = st.text_input(
     "Email",
     placeholder="maria@company.com"
 ).strip().lower()
 
+
 number = st.text_input(
-    "Τελ. Αριθμός",
+    "Τελικός αριθμός",
     placeholder="1234"
-).strip().lower()
+).strip()
 
 
-if email:
+# ============================================================
+# 4. ΥΠΟΒΟΛΗ
+# ============================================================
+
+st.divider()
+
+
+if st.button(
+    "✅ ΥΠΟΒΟΛΗ ΔΙΑΘΕΣΙΜΟΤΗΤΑΣ",
+    type="primary",
+    use_container_width=True
+):
+
+
+    # --------------------------------------------------------
+    # Έλεγχος email
+    # --------------------------------------------------------
+
+    if not email:
+
+        st.error(
+            "Παρακαλώ συμπληρώστε το email."
+        )
+
+        st.stop()
+
 
     if "@" not in email:
 
-        st.warning(
-            "Please enter a valid email address."
-        )
-
-        st.stop()
-
-
-    # ========================================================
-    # MONTH
-    # ========================================================
-
-    st.subheader(
-        "Select month"
-    )
-
-
-    
-    # ============================================================
-    # MONTH SELECTION - NEXT 3 MONTHS
-    # ============================================================
-    
-    today = date.today()
-    
-    GREEK_MONTHS = [
-        "Ιανουάριος",
-        "Φεβρουάριος",
-        "Μάρτιος",
-        "Απρίλιος",
-        "Μάιος",
-        "Ιούνιος",
-        "Ιούλιος",
-        "Αύγουστος",
-        "Σεπτέμβριος",
-        "Οκτώβριος",
-        "Νοέμβριος",
-        "Δεκέμβριος",
-    ]
-    
-    months = []
-    
-    for i in range(3):
-    
-        total_months = (
-            today.year * 12
-            + today.month
-            - 1
-            + i
-        )
-    
-        year = total_months // 12
-        month = total_months % 12 + 1
-    
-        months.append(
-            (year, month)
-        )
-    
-    
-    month_labels = [
-        f"{GREEK_MONTHS[month - 1]} {year}"
-        for year, month in months
-    ]
-    
-    
-    selected_label = st.selectbox(
-        "Επιλέξτε μήνα",
-        month_labels
-    )
-    
-    
-    selected_index = month_labels.index(
-        selected_label
-    )
-    
-    
-    year, month = months[
-        selected_index
-    ]
-    
-    
-        
-    
-    month_name = calendar.month_name[
-            month
-        ]
-
-
-    # ========================================================
-    # LOAD DATA
-    # ========================================================
-
-    try:
-
-        all_rows, csv_sha = read_availability()
-
-    except Exception as error:
-
         st.error(
-            f"Could not load availability: "
-            f"{error}"
-        )
-
-        st.stop()
-
-
-    existing = get_employee_selections(
-        all_rows,
-        email,
-        number,
-        year,
-        month
-    )
-
-
-    # ========================================================
-    # CALENDAR
-    # ========================================================
-
-    st.subheader(
-        f"{month_name} {year}"
-    )
-
-    st.caption(
-        "🟥 Public holiday   "
-        "🟦 Weekend"
-    )
-
-    holidays = get_holidays(
-        year
-    )
-
-    calendar_weeks = calendar.monthcalendar(
-        year,
-        month
-    )
-
-    day_names = [
-        "MON",
-        "TUE",
-        "WED",
-        "THU",
-        "FRI",
-        "SAT",
-        "SUN"
-    ]
-
-
-    # ========================================================
-    # DAY HEADERS
-    # ========================================================
-
-    header = st.columns(7)
-
-    for i, day_name in enumerate(
-        day_names
-    ):
-
-        with header[i]:
-
-            st.markdown(
-                f"**{day_name}**"
-            )
-
-
-    # ========================================================
-    # CALENDAR DAYS
-    # ========================================================
-
-    selected = []
-
-
-    for week_number, week in enumerate(
-        calendar_weeks
-    ):
-
-        columns = st.columns(7)
-
-
-        for day_index, day_number in enumerate(
-            week
-        ):
-
-            with columns[day_index]:
-
-                # Empty calendar cell
-
-                if day_number == 0:
-
-                    st.write("")
-
-                    continue
-
-
-                work_date = date(
-                    year,
-                    month,
-                    day_number
-                )
-
-
-                # ------------------------------------------------
-                # DATE TITLE
-                # ------------------------------------------------
-
-                if work_date in holidays:
-
-                    st.markdown(
-                        f"### 🟥 {day_number}"
-                    )
-
-                    st.caption(
-                        holidays[work_date]
-                    )
-
-                elif work_date.weekday() >= 5:
-
-                    st.markdown(
-                        f"### 🟦 {day_number}"
-                    )
-
-                    st.caption(
-                        "Weekend"
-                    )
-
-                else:
-
-                    st.markdown(
-                        f"### {day_number}"
-                    )
-
-
-                # ------------------------------------------------
-                # SHIFTS
-                # ------------------------------------------------
-
-                shifts = shifts_for_date(
-                    work_date,
-                    holidays
-                )
-
-
-                for shift_index, shift in enumerate(
-                    shifts
-                ):
-
-                    key = (
-                        f"{year}-"
-                        f"{month:02d}-"
-                        f"{day_number:02d}_"
-                        f"{shift}"
-                    )
-
-                    default_value = (
-                        (
-                            work_date.isoformat(),
-                            shift
-                        )
-                        in existing
-                    )
-
-                    checked = st.checkbox(
-                        shift,
-                        value=default_value,
-                        key=key
-                    )
-
-
-                    if checked:
-
-                        selected.append(
-                            {
-                                "email": email,
-                                "number": number,
-                                "work_date":
-                                    work_date.isoformat(),
-                                "shift": shift
-                            }
-                        )
-
-
-    # ========================================================
-    # SAVE
-    # ========================================================
-
-    st.divider()
-
-    if st.button(
-        "💾 SAVE AVAILABILITY",
-        type="primary",
-        use_container_width=True
-    ):
-
-        try:
-
-            # ----------------------------------------------
-            # Remove this employee's old month
-            # ----------------------------------------------
-
-            new_rows = []
-
-            for row in all_rows:
-
-                try:
-
-                    row_date = date.fromisoformat(
-                        row["work_date"]
-                    )
-
-                except ValueError:
-
-                    continue
-
-
-                same_employee = (
-                    row["email"]
-                    .strip()
-                    .lower()
-                    == email
-                )
-
-
-                same_month = (
-                    row_date.year == year
-                    and row_date.month == month
-                )
-
-
-                # Keep everything except
-                # this employee's old month
-
-                if (
-                    same_employee
-                    and same_month
-                ):
-
-                    continue
-
-
-                new_rows.append(
-                    row
-                )
-
-
-            # ----------------------------------------------
-            # Add new selections
-            # ----------------------------------------------
-
-            new_rows.extend(
-                selected
-            )
-
-
-            # ----------------------------------------------
-            # Save to GitHub
-            # ----------------------------------------------
-
-            save_availability(
-                new_rows,
-                csv_sha
-            )
-
-
-            st.success(
-                "✅ Your availability has been saved!"
-            )
-
-
-            st.info(
-                f"{len(selected)} shifts saved "
-                f"for {month_name} {year}."
-            )
-
-
-            st.rerun()
-
-
-        except Exception as error:
-
-            st.error(
-                f"Could not save availability: "
-                f"{error}"
-            )
-
-
-# ============================================================
-# FOOTER
-# ============================================================
-
-st
+            "Παρακα
